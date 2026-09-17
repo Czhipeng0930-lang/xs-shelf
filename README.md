@@ -23,7 +23,7 @@
 
 ```powershell
 pnpm install
-pnpm dev        # http://localhost:5173/sm-github/
+pnpm dev        # http://localhost:5173/xs-shelf/
 pnpm test       # 单元测试（规则 / 引擎 / 分享编码）
 pnpm lint
 pnpm typecheck
@@ -34,9 +34,10 @@ pnpm build      # 产出 dist/
 
 ## 部署到 GitHub Pages
 
-1. 在 GitHub 新建仓库（默认 `vite.config.ts` 的 `base` 按仓库名 `sm-github` 配置；**仓库名不同请同步修改 `base`**）。
+1. `vite.config.ts` 的 `base` 必须等于仓库名，例如仓库叫 `xs-shelf` 则 `base: '/xs-shelf/'`。
 2. 推送 `main` 分支，`.github/workflows/deploy.yml` 会自动构建并发布。
 3. 仓库 Settings → Pages → Source 选择 **GitHub Actions**。
+4. 改名后新地址是 `https://<用户名>.github.io/<新仓库名>/`。
 
 进度、最高分保存在浏览器 localStorage，无任何后端。
 

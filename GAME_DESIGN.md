@@ -129,7 +129,7 @@
 ⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜
 🟩🟩🟨⬜🟫🟫⬜⬜🟦🟦
 ...
-https://<user>.github.io/sm-github/#d247-eJyrVkrOz1...
+https://<user>.github.io/xs-shelf/#d247-eJyrVkrOz1...
 ```
 
 - URL hash 格式 `#d20260917.<base64url(deflate(actions))>`：记录的是**动作序列**（放置 / 选促销卡 / 丢弃 / 开业），打开时用同种子回放引擎重建整家店，分数必然一致；未开业的局可以接着玩（对应母项目分享方案）。
@@ -195,9 +195,9 @@ https://<user>.github.io/sm-github/#d247-eJyrVkrOz1...
 ### 5.1 目录规划
 
 ```
-sm-github/
+xs-shelf/
 ├─ index.html
-├─ vite.config.ts              # base: '/sm-github/'
+├─ vite.config.ts              # base: '/xs-shelf/'
 ├─ .github/workflows/deploy.yml
 ├─ src/
 │  ├─ game/                    # 规则引擎（纯数据，零渲染依赖）
@@ -251,7 +251,7 @@ sm-github/
 
 ## 7. GitHub Pages 部署要点
 
-1. `vite.config.ts` 的 `base: '/sm-github/'`（仓库名即子路径，改名同步改）。
+1. `vite.config.ts` 的 `base: '/xs-shelf/'`（必须等于仓库名；改名后同步改再推送）。
 2. `.github/workflows/deploy.yml`：push main → `pnpm install && pnpm build` → `actions/deploy-pages`。
 3. 仓库 Settings → Pages → Source: GitHub Actions。
 4. 全部资源相对路径，运行时零 API 依赖。

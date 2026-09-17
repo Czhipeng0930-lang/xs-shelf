@@ -1,9 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-// GitHub Pages 子路径部署：仓库名若不是 sm-github，请同步修改 base
+// GitHub Pages 子路径部署：必须与仓库名一致（当前 xs-shelf）
 export default defineConfig({
-  base: '/sm-github/',
+  base: '/xs-shelf/',
   plugins: [react()],
   test: {
     environment: 'node',
