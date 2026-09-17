@@ -1,5 +1,5 @@
 {
-  "name": "supermarket-tycoon",
+  "name": "pixel-shelves",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -16,11 +16,9 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "@react-three/drei": "10.7.7",
-    "@react-three/fiber": "9.6.1",
+    "fflate": "^0.8.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "three": "0.185.1",
     "zustand": "5.0.14"
   },
   "devDependencies": {
@@ -28,7 +26,6 @@
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "@types/three": "^0.185.1",
     "@vitejs/plugin-react": "^4.4.1",
     "eslint": "^9.20.0",
     "eslint-plugin-react-hooks": "^7.1.0",
