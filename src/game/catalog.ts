@@ -52,9 +52,9 @@ export const FIXTURES: Record<FixtureTypeId, FixtureDef> = {
     hint: '放在主动线旁 ×3', variants: 2,
   },
   'warehouse-rack': {
-    typeId: 'warehouse-rack', name: '仓储架', short: '仓储', w: 3, h: 1, faces: [2], wall: 0,
+    typeId: 'warehouse-rack', name: '仓储架', short: '仓储', w: 3, h: 1, faces: [2],
     base: 110, weight: 2, unlockAt: 300, color: '#e58b37', dark: '#8f4f16',
-    hint: '又高又长，背面贴墙；别挨着冷柜', variants: 2,
+    hint: '又高又长，单面取货，靠墙不靠墙都行；别挨着冷柜', variants: 2,
   },
   'upright-chiller': {
     typeId: 'upright-chiller', name: '立式冷柜', short: '立冷', w: 2, h: 1, faces: [2], wall: 0, power: true,

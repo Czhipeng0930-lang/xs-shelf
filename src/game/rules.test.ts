@@ -49,6 +49,12 @@ describe('canPlace', () => {
     expect(canPlace(ctx(b, [], ['ice-summer']), { typeId: 'upright-chiller', x: 8, y: 0, rot: 0 }).ok).toBe(true);
   });
 
+  it('仓储架不必靠墙', () => {
+    const b = board();
+    expect(canPlace(ctx(b, []), { typeId: 'warehouse-rack', x: 4, y: 4, rot: 0 }).ok).toBe(true);
+    expect(canPlace(ctx(b, []), { typeId: 'warehouse-rack', x: 4, y: 0, rot: 0 }).ok).toBe(true);
+  });
+
   it('端架必须贴双面货架短边端头', () => {
     const b = board();
     const c = ctx(b, [p('double-gondola', 4, 4)]);

@@ -75,15 +75,17 @@ export default function App() {
     <div className="app">
       <TopBar onHelp={() => setHelpOpen(true)} />
       {toast && <div className="toast">{toast}</div>}
-      <div className="main">
-        <Board showCrowd={screen === 'result'} onCrowdDone={openResult} />
-        {screen === 'result' && !resultOpen && (
-          <button className="btn primary skip-btn" onClick={openResult}>
-            查看计分板 →
-          </button>
-        )}
+      <div className="play-layout">
+        <div className="main">
+          <Board showCrowd={screen === 'result'} onCrowdDone={openResult} />
+          {screen === 'result' && !resultOpen && (
+            <button className="btn primary skip-btn" onClick={openResult}>
+              查看计分板 →
+            </button>
+          )}
+        </div>
+        <HandBar />
       </div>
-      <HandBar />
       <PromoPicker />
       <ResultPanel open={resultOpen} onClose={() => setResultFor(null)} />
       <HelpOverlay open={showHelp} onClose={closeHelp} />

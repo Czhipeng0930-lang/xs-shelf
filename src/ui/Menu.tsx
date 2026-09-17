@@ -1,5 +1,6 @@
 import { dailyNumber, dailySeed } from '../game/rng';
 import { hasResumableRun, savedRunInfo, useStore } from '../game/store';
+import { BrandLogo } from './BrandLogo';
 import { CardPreview } from './CardPreview';
 
 interface Props {
@@ -19,6 +20,10 @@ export function Menu({ onHelp }: Props) {
   return (
     <div className="menu">
       <div className="menu-card">
+        <div className="menu-brand">
+          <BrandLogo size="md" />
+          <span className="menu-brand-sub">出品</span>
+        </div>
         <div className="menu-logo">
           <CardPreview typeId="double-gondola" scale={3} variant={0} />
           <CardPreview typeId="upright-chiller" scale={3} />

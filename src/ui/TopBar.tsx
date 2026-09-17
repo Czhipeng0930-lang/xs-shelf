@@ -2,6 +2,7 @@ import { UNLOCK_TIERS } from '../game/catalog';
 import { PROMOS } from '../game/promo';
 import { dailyNumber } from '../game/rng';
 import { useStore } from '../game/store';
+import { BrandLogo } from './BrandLogo';
 
 interface Props {
   onHelp: () => void;
@@ -20,7 +21,10 @@ export function TopBar({ onHelp }: Props) {
       <button className="btn ghost" onClick={toMenu} title="返回菜单">
         ←
       </button>
-      <span className="brand">像素货架</span>
+      <span className="brand">
+        <BrandLogo size="sm" markOnly />
+        像素货架
+      </span>
       <span className="pill mode">
         {game.mode === 'daily' ? `每日挑战 #${dailyNumber(game.seed)}` : `无尽 · ${game.board.cols}×${game.board.rows}`}
         {viewingShared && ' · 回看'}

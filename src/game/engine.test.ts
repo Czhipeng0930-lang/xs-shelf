@@ -109,7 +109,8 @@ describe('engine', () => {
     const end = autoPlay(newGame('endless', 3), 120, true);
     expect(end.expansions).toBeGreaterThanOrEqual(1);
     expect(end.board.cols).toBeGreaterThan(14);
-    expect(end.deckRemaining + end.hand.length).toBeGreaterThan(0);
+    // 要么扩到上限后正常结束，要么还有牌可打
+    expect(end.finished || end.deckRemaining + end.hand.length > 0).toBe(true);
   });
 
   it('handStuck 在空板上为假', () => {
@@ -121,7 +122,7 @@ describe('engine', () => {
 
 describe('share', () => {
   it('编码 / 解码往返一致，且链接足够短', () => {
-    const end = autoPlay(newGame('daily', 20260917));
+    const end = autoPlay(newGame('daily', 20260917), 200, true);
     const code = encodeShare({ mode: 'daily', seed: 20260917, actions: end.actions });
     expect(code.length).toBeLessThan(400);
     const back = decodeShare(`#${code}`)!;

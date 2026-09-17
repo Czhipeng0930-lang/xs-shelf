@@ -25,6 +25,13 @@ body,
   margin: 0;
 }
 
+/* 移动端浏览器地址栏伸缩：用动态视口高度 */
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   color: var(--ink);
@@ -190,10 +197,97 @@ canvas {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 17px;
   font-weight: 900;
   letter-spacing: 3px;
   text-shadow: 2px 2px 0 var(--bg-deep);
+}
+
+/* ---------- 品牌 ---------- */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  box-shadow: 0 2px 0 var(--bg-deep);
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.brand-cn {
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.brand-en {
+  font-size: 0.62em;
+  letter-spacing: 2.5px;
+  color: #dcb879;
+  font-weight: 700;
+}
+
+.brand-sm {
+  font-size: 13px;
+}
+
+.brand-md {
+  font-size: 18px;
+}
+
+.brand-lg {
+  font-size: 26px;
+}
+
+.menu-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.menu-brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+  align-self: flex-end;
+  padding-bottom: 2px;
+}
+
+.result-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px solid var(--bg-deep);
+}
+
+.share-fallback {
+  width: 100%;
+  margin: 6px 0;
+  background: var(--bg-deep);
+  color: var(--ink);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
 }
 
 .pill.mode {
@@ -242,6 +336,13 @@ canvas {
 }
 
 /* ---------- 棋盘 ---------- */
+.play-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .main {
   flex: 1;
   min-height: 0;
@@ -250,6 +351,7 @@ canvas {
 }
 
 .board-wrap {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -257,6 +359,43 @@ canvas {
   align-items: center;
   justify-content: center;
   padding: 4px;
+}
+
+.touch-bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-deep);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 8px;
+  z-index: 5;
+}
+
+.touch-bar .btn {
+  padding: 8px 12px;
+  font-size: 15px;
+  min-width: 42px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.touch-reason {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.touch-reason.bad {
+  color: #f6757a;
 }
 
 .board-inner {
@@ -642,28 +781,111 @@ canvas {
   font-size: 30px;
 }
 
-/* ---------- 响应式 ---------- */
+/* ---------- 响应式：竖屏手机 ---------- */
 @media (max-width: 720px) {
   .topbar {
     gap: 6px;
     padding: 6px 8px;
+    padding-top: max(6px, env(safe-area-inset-top));
   }
 
   .brand {
     display: none;
   }
 
+  .score-block {
+    min-width: 90px;
+  }
+
+  .pill.mode {
+    font-size: 11.5px;
+    padding: 3px 8px;
+  }
+
+  /* 手牌栏：单行卡片横向滑动 + 一行操作，总高约 150px */
+  .handbar {
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px 8px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+
+  .hand-cards {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 6px 2px 2px;
+    scrollbar-width: none;
+  }
+
+  .hand-cards::-webkit-scrollbar {
+    display: none;
+  }
+
   .hand-card {
-    width: 72px;
-    height: 100px;
+    flex-shrink: 0;
+    width: 74px;
+    height: 96px;
+    padding: 6px 4px 5px;
+  }
+
+  .hand-card.active {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 0 var(--bg-deep);
   }
 
   .hand-card .card-preview {
-    max-width: 60px;
-    max-height: 46px;
+    max-width: 62px;
+    max-height: 44px;
+  }
+
+  .hand-name {
+    font-size: 13px;
+  }
+
+  .hand-base {
+    font-size: 12px;
+  }
+
+  .hand-actions {
+    flex: none;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .hand-hint {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+  }
+
+  .hand-hint b {
+    font-size: 13px;
   }
 
   .hand-hint span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hand-buttons {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .hand-buttons .btn {
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  .ghost-reason {
     display: none;
   }
 
@@ -672,7 +894,129 @@ canvas {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .modal {
+    padding: 16px;
+  }
+
   .menu h1 {
     font-size: 28px;
+  }
+
+  .skip-btn {
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+/* ---------- 响应式：横屏手机（矮屏） ---------- */
+@media (orientation: landscape) and (max-height: 520px) {
+  .topbar {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .brand {
+    display: none;
+  }
+
+  .unlock-bar {
+    display: none;
+  }
+
+  .play-layout {
+    flex-direction: row;
+  }
+
+  .handbar {
+    flex-direction: column;
+    width: 172px;
+    border-top: none;
+    border-left: 3px solid var(--border);
+    padding: 6px;
+    padding-right: max(6px, env(safe-area-inset-right));
+    gap: 6px;
+    overflow-y: auto;
+    flex-wrap: nowrap;
+  }
+
+  .hand-cards {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .hand-card {
+    width: 72px;
+    height: 82px;
+    padding: 5px 4px 4px;
+    gap: 1px;
+  }
+
+  .hand-card.active {
+    transform: none;
+    box-shadow: var(--shadow);
+  }
+
+  .hand-card .card-preview {
+    max-width: 60px;
+    max-height: 38px;
+  }
+
+  .hand-base {
+    display: none;
+  }
+
+  .hand-actions {
+    flex: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .hand-hint {
+    text-align: center;
+  }
+
+  .hand-hint span {
+    display: none;
+  }
+
+  .hand-buttons {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 5px;
+  }
+
+  .hand-buttons .btn {
+    flex: 1;
+    padding: 7px 4px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .btn-label {
+    display: none;
+  }
+
+  .ghost-reason {
+    display: none;
+  }
+
+  .modal {
+    padding: 14px;
+    max-height: 94vh;
+  }
+
+  .modal h2 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .emoji-grid {
+    display: none;
   }
 }

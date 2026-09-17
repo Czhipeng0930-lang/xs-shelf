@@ -136,6 +136,8 @@ export function shareTitle(s: GameState): string {
   return `像素货架 无尽模式  ⭐ ${score}  ${s.board.cols}×${s.board.rows} 店面`;
 }
 
+export const SHARE_FOOTER = '润达货架 RUNDA SHELF 出品';
+
 export function shareText(s: GameState, url: string): string {
-  return `${shareTitle(s)}\n${emojiGrid(s)}\n${url}`;
+  return `${shareTitle(s)}\n${emojiGrid(s)}\n${url}\n${SHARE_FOOTER}`;
 }

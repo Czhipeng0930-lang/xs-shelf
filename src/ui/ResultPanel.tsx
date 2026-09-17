@@ -4,6 +4,7 @@ import { DEAD_FACE_PENALTY, WASTE_PENALTY } from '../game/scoring';
 import { emojiGrid, encodeShare, shareText, shareTitle } from '../game/share';
 import { useStore } from '../game/store';
 import type { FixtureTypeId } from '../game/types';
+import { BrandLogo } from './BrandLogo';
 
 interface Props {
   open: boolean;
@@ -18,6 +19,7 @@ export function ResultPanel({ open, onClose }: Props) {
   const bestEndless = useStore((s) => s.bestEndless);
   const showToast = useStore((s) => s.showToast);
   const [copied, setCopied] = useState(false);
+  const [fallback, setFallback] = useState(false);
 
   const url = useMemo(() => {
     if (!game) return '';
@@ -35,15 +37,18 @@ export function ResultPanel({ open, onClose }: Props) {
     byType.set(f.typeId, cur);
   }
   const best = game.mode === 'daily' ? bestDaily[String(game.seed)] ?? 0 : bestEndless;
+  const text = shareText(game, url);
 
   const copy = async () => {
-    const text = shareText(game, url);
     try {
+      if (!navigator.clipboard) throw new Error('no clipboard');
       await navigator.clipboard.writeText(text);
       setCopied(true);
       showToast('已复制，去群里比拼吧');
     } catch {
-      showToast('复制失败，请手动选择文本');
+      // 微信内置浏览器等不给剪贴板权限：退化为长按复制的文本框
+      setFallback(true);
+      showToast('请长按下方文本复制');
     }
   };
 
@@ -80,6 +85,7 @@ export function ResultPanel({ open, onClose }: Props) {
           ))}
         </div>
         <pre className="emoji-grid">{emojiGrid(game)}</pre>
+        {fallback && <textarea className="share-fallback" readOnly value={text} onFocus={(e) => e.currentTarget.select()} rows={5} />}
         <div className="result-actions">
           <button className="btn primary" onClick={copy}>
             {copied ? '✅ 已复制' : '📋 复制分享'}
@@ -91,7 +97,10 @@ export function ResultPanel({ open, onClose }: Props) {
             菜单
           </button>
         </div>
-        <p className="muted small">链接打开可复现整家店：{url.length > 60 ? `${url.slice(0, 60)}…` : url}</p>
+        <div className="result-footer">
+          <span className="muted small">链接打开可复现整家店</span>
+          <BrandLogo size="sm" />
+        </div>
       </div>
     </div>
   );

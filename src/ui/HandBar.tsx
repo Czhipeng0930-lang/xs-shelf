@@ -15,7 +15,9 @@ export function HandBar() {
 
   const showCheckout = canPlaceCheckout(game);
   const stuck = handStuck(game);
-  const selected = selectedUid === CHECKOUT_UID ? FIXTURES.checkout : game.hand.find((c) => c.uid === selectedUid) ? FIXTURES[game.hand.find((c) => c.uid === selectedUid)!.typeId] : null;
+  const selectedCard = game.hand.find((c) => c.uid === selectedUid);
+  const selected = selectedUid === CHECKOUT_UID ? FIXTURES.checkout : selectedCard ? FIXTURES[selectedCard.typeId] : null;
+  const hasCheckout = checkoutPlaced(game);
 
   return (
     <div className="handbar">
@@ -38,14 +40,14 @@ export function HandBar() {
         })}
         {showCheckout && (
           <button
-            className={`hand-card checkout ${selectedUid === CHECKOUT_UID ? 'active' : ''} ${checkoutPlaced(game) ? 'extra' : ''}`}
+            className={`hand-card checkout ${selectedUid === CHECKOUT_UID ? 'active' : ''} ${hasCheckout ? 'extra' : ''}`}
             onClick={() => selectCard(CHECKOUT_UID)}
             title={FIXTURES.checkout.hint}
           >
             <span className="hand-key">C</span>
             <CardPreview typeId="checkout" rot={selectedUid === CHECKOUT_UID ? rot : 0} scale={2} />
             <span className="hand-name">收银台</span>
-            <span className="hand-base">{checkoutPlaced(game) ? '第二台' : '必放'}</span>
+            <span className="hand-base">{hasCheckout ? '第二台' : '必放'}</span>
           </button>
         )}
       </div>
@@ -61,19 +63,24 @@ export function HandBar() {
           )}
         </div>
         <div className="hand-buttons">
-          <button className="btn" onClick={rotate} title="R / 右键">
-            ⟳ 旋转
+          <button className="btn" onClick={rotate} title="旋转（R / 右键）">
+            ⟳<span className="btn-label"> 旋转</span>
           </button>
-          <button className="btn" onClick={discardSelected} disabled={game.discardsLeft <= 0 || !selected || selected.typeId === 'checkout'} title="丢弃当前卡并补一张">
-            🗑 丢弃 ×{game.discardsLeft}
+          <button
+            className="btn"
+            onClick={discardSelected}
+            disabled={game.discardsLeft <= 0 || !selected || selected.typeId === 'checkout'}
+            title="丢弃当前卡并补一张"
+          >
+            🗑<span className="btn-label"> 丢弃</span> ×{game.discardsLeft}
           </button>
           <button
             className={`btn primary ${stuck ? 'pulse' : ''}`}
             onClick={openStore}
             disabled={!canFinish(game)}
-            title={checkoutPlaced(game) ? '结算并观看开业演出' : stuck ? '手牌已无处可放；没放收银台开业总分减半' : '先放收银台'}
+            title={hasCheckout ? '结算并观看开业演出' : stuck ? '手牌已无处可放；没放收银台开业总分减半' : '先放收银台'}
           >
-            🏪 开业结算{stuck && !checkoutPlaced(game) ? '（无收银 −50%）' : ''}
+            🏪 开业{stuck && !hasCheckout ? '（−50%）' : ''}
           </button>
         </div>
       </div>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 12 12" shape-rendering="crispEdges" role="img" aria-label="¦¾'¶ RUNDA SHELF">
+  <rect width="12" height="12" fill="#123f37"/>
+  <rect x="1" y="1" width="10" height="1" fill="#1e5c50"/>
+  <rect x="1" y="5" width="10" height="1" fill="#dcb879"/>
+  <rect x="1" y="10" width="10" height="1" fill="#dcb879"/>
+  <rect x="1" y="1" width="1" height="10" fill="#dcb879"/>
+  <rect x="10" y="1" width="1" height="10" fill="#dcb879"/>
+  <rect x="2" y="2" width="2" height="3" fill="#e43b44"/>
+  <rect x="5" y="3" width="2" height="2" fill="#feae34"/>
+  <rect x="8" y="2" width="1" height="3" fill="#63c74d"/>
+  <rect x="2" y="7" width="1" height="3" fill="#0099db"/>
+  <rect x="4" y="8" width="3" height="2" fill="#e43b44"/>
+  <rect x="8" y="7" width="2" height="3" fill="#feae34"/>
+</svg>
