@@ -95,6 +95,15 @@ export class Crowd {
     return this.spawned >= this.total && this.people.length === 0;
   }
 
+  /** 有人在走、在等、或还在进店，就算场面还在动 */
+  activityKey(): string {
+    let s = `${this.spawned}:${this.people.length}`;
+    for (const p of this.people) {
+      s += `|${p.x.toFixed(1)},${p.y.toFixed(1)},${p.state},${p.wait.toFixed(1)},${p.path.length}`;
+    }
+    return s;
+  }
+
   update(dt: number) {
     this.spawnTimer -= dt;
     if (this.spawned < this.total && this.spawnTimer <= 0 && this.doors.length > 0) {

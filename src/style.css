@@ -450,10 +450,23 @@ canvas {
   }
 }
 
-.skip-btn {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
+.crowd-actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px max(12px, env(safe-area-inset-bottom));
+  background: var(--bg-deep);
+  border-top: 3px solid var(--border);
+}
+
+.crowd-actions .btn {
+  flex: 1;
+  min-height: 48px;
+  font-size: 16px;
 }
 
 /* ---------- 手牌栏 ---------- */
@@ -1008,9 +1021,9 @@ canvas {
     font-size: 28px;
   }
 
-  .skip-btn {
-    right: 10px;
-    bottom: 10px;
+  .crowd-actions {
+    gap: 8px;
+    padding: 8px 10px max(10px, env(safe-area-inset-bottom));
   }
 }
 

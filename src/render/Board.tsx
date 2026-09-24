@@ -14,6 +14,8 @@ const DRAG_SLOP = 10;
 interface Props {
   /** 开业演出 */
   showCrowd: boolean;
+  /** 1 正常，2 加速。只影响客人走动，不影响结算 */
+  crowdSpeed?: number;
   onCrowdDone?: () => void;
 }
 
@@ -28,7 +30,9 @@ interface Gesture {
   timer: ReturnType<typeof setTimeout> | null;
 }
 
-export function Board({ showCrowd, onCrowdDone }: Props) {
+const STUCK_SEC = 20;
+
+export function Board({ showCrowd, crowdSpeed = 1, onCrowdDone }: Props) {
   const game = useStore((s) => s.game);
   const draft = useStore((s) => s.draft);
   const rot = useStore((s) => s.rot);
@@ -53,6 +57,8 @@ export function Board({ showCrowd, onCrowdDone }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const gesture = useRef<Gesture | null>(null);
+  const speedRef = useRef(crowdSpeed);
+  speedRef.current = crowdSpeed;
   const [view, setView] = useState<View>({ scale: 3, css: 3, ox: 6, oy: 20 });
   const crowd = useMemo(() => (game && showCrowd ? new Crowd(game) : null), [game, showCrowd]);
   const locked = showCrowd || !!game?.promoOffer;
@@ -109,6 +115,8 @@ export function Board({ showCrowd, onCrowdDone }: Props) {
     let acc = 0;
     let frame = 0;
     let doneFired = false;
+    let stillFor = 0;
+    let lastActivity = crowd?.activityKey() ?? '';
     const opts = () => ({
       ghost,
       crowd: crowd?.people ?? [],
@@ -121,7 +129,20 @@ export function Board({ showCrowd, onCrowdDone }: Props) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       acc += dt;
-      if (crowd) crowd.update(dt);
+      if (crowd && !doneFired) {
+        crowd.update(dt * speedRef.current);
+        const activity = crowd.activityKey();
+        if (activity !== lastActivity) {
+          lastActivity = activity;
+          stillFor = 0;
+        } else {
+          stillFor += dt;
+        }
+        if (crowd.finished || stillFor >= STUCK_SEC) {
+          doneFired = true;
+          onCrowdDone?.();
+        }
+      }
       const animated = !!crowd || !!ghost || !!selectedFixtureId;
       if (acc >= 0.22) {
         acc = 0;
@@ -129,10 +150,6 @@ export function Board({ showCrowd, onCrowdDone }: Props) {
         renderScene(ctx, game, view, opts());
       } else if (animated) {
         renderScene(ctx, game, view, opts());
-      }
-      if (crowd && crowd.finished && !doneFired) {
-        doneFired = true;
-        onCrowdDone?.();
       }
       raf = requestAnimationFrame(loop);
     };

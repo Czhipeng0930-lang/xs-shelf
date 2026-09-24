@@ -10,9 +10,6 @@ import { Menu } from './ui/Menu';
 import { TopBar } from './ui/TopBar';
 import { UpgradePanel } from './ui/UpgradePanel';
 
-/** 开业演出最长播多久 */
-const CROWD_MS = 7000;
-
 export default function App() {
   const screen = useStore((s) => s.screen);
   const game = useStore((s) => s.game);
@@ -24,6 +21,7 @@ export default function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   /** 记录哪一天的开业演出已经看完，换天自动重置 */
   const [crowdDoneFor, setCrowdDoneFor] = useState<number | null>(null);
+  const [crowdSpeed, setCrowdSpeed] = useState(1);
   const day = game?.day ?? 0;
   const crowdDone = crowdDoneFor === day;
 
@@ -39,11 +37,9 @@ export default function App() {
     }
   }, [loadShared]);
 
-  // 进入结算先看演出，超时兜底
+  // 新的一天开业，速度回到原速
   useEffect(() => {
-    if (screen !== 'report') return;
-    const t = setTimeout(() => setCrowdDoneFor(day), CROWD_MS);
-    return () => clearTimeout(t);
+    if (screen === 'report') setCrowdSpeed(1);
   }, [screen, day]);
 
   useEffect(() => {
@@ -88,22 +84,27 @@ export default function App() {
 
   return (
     <div className="app">
-      <TopBar onHelp={() => setHelpOpen(true)} />
+      <TopBar onHelp={() => { if (!showingCrowd) setHelpOpen(true); }} />
       {toast && <div className="toast">{toast}</div>}
       <div className="play-layout">
         <div className="main">
-          <Board showCrowd={showingCrowd} onCrowdDone={() => setCrowdDoneFor(day)} />
-          {showingCrowd && (
-            <button className="btn primary skip-btn" onClick={() => setCrowdDoneFor(day)}>
-              跳过 · 看账本 →
-            </button>
-          )}
+          <Board showCrowd={showingCrowd} crowdSpeed={crowdSpeed} onCrowdDone={() => setCrowdDoneFor(day)} />
         </div>
         {screen === 'play' && <HandBar />}
+        {showingCrowd && (
+          <div className="crowd-actions">
+            <button className="btn big" onClick={() => setCrowdSpeed((v) => (v === 1 ? 2 : 1))}>
+              {crowdSpeed === 1 ? '⏩ 加速' : '▶ 原速'}
+            </button>
+            <button className="btn primary big" onClick={() => setCrowdDoneFor(day)}>
+              跳过 · 看账本
+            </button>
+          </div>
+        )}
       </div>
       <DayReport open={screen === 'report' && crowdDone} />
-      <UpgradePanel />
-      <HelpOverlay open={showHelp} onClose={closeHelp} />
+      {screen === 'play' && <UpgradePanel />}
+      <HelpOverlay open={showHelp && !showingCrowd} onClose={closeHelp} />
     </div>
   );
 }
