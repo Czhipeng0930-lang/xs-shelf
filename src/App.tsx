@@ -84,7 +84,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <TopBar onHelp={() => { if (!showingCrowd) setHelpOpen(true); }} />
+      <TopBar opening={showingCrowd} onHelp={() => { if (!showingCrowd) setHelpOpen(true); }} />
       {toast && <div className="toast">{toast}</div>}
       <div className="play-layout">
         <div className="main">

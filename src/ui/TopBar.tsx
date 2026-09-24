@@ -6,9 +6,11 @@ import { BrandLogo } from './BrandLogo';
 
 interface Props {
   onHelp: () => void;
+  /** 客人还在店里，顶栏仍显示这一天，而不是已经加过的下一天 */
+  opening?: boolean;
 }
 
-export function TopBar({ onHelp }: Props) {
+export function TopBar({ onHelp, opening = false }: Props) {
   const game = useStore((s) => s.game);
   const toMenu = useStore((s) => s.toMenu);
   const musicOn = useStore((s) => s.musicOn);
@@ -35,7 +37,7 @@ export function TopBar({ onHelp }: Props) {
       </span>
       <div className="tier-block">
         <span className="tier-name">
-          第 {game.day} 天 · {tier.name}
+          {opening && game.lastReport ? `第 ${game.lastReport.day} 天开业中` : `第 ${game.day} 天 · ${tier.name}`}
         </span>
         <div className="tier-bar" title={next ? `累计 ¥${next.need} 升级扩店` : '已是最高等级'}>
           <div className="tier-fill" style={{ width: `${progress * 100}%` }} />
