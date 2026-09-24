@@ -1,86 +1,89 @@
-import { FIXTURES } from '../game/catalog';
-import { canFinish, canPlaceCheckout, checkoutPlaced, handStuck } from '../game/engine';
-import { CHECKOUT_UID, useStore } from '../game/store';
+import { FIXTURES, LEVEL_NAME } from '../game/catalog';
+import { canOpen, checkoutCost, checkoutCount, handStuck, priceOf, quotaLeft } from '../game/engine';
+import { CHECKOUT_UID, selectedCard, useStore } from '../game/store';
 import { CardPreview } from './CardPreview';
 
 export function HandBar() {
   const game = useStore((s) => s.game);
   const selectedUid = useStore((s) => s.selectedUid);
   const rot = useStore((s) => s.rot);
+  const card = selectedCard({ game, selectedUid });
   const selectCard = useStore((s) => s.selectCard);
-  const rotate = useStore((s) => s.rotate);
-  const discardSelected = useStore((s) => s.discardSelected);
+  const rerollHand = useStore((s) => s.rerollHand);
   const openStore = useStore((s) => s.openStore);
-  if (!game || game.finished) return null;
+  if (!game || game.promoOffer) return null;
 
-  const showCheckout = canPlaceCheckout(game);
+  const needCheckout = checkoutCount(game) === 0;
+  const quota = quotaLeft(game);
   const stuck = handStuck(game);
-  const selectedCard = game.hand.find((c) => c.uid === selectedUid);
-  const selected = selectedUid === CHECKOUT_UID ? FIXTURES.checkout : selectedCard ? FIXTURES[selectedCard.typeId] : null;
-  const hasCheckout = checkoutPlaced(game);
+  const openable = canOpen(game).ok;
+  const def = card ? FIXTURES[card.typeId] : null;
 
   return (
     <div className="handbar">
       <div className="hand-cards">
         {game.hand.map((c, i) => {
-          const def = FIXTURES[c.typeId];
+          const d = FIXTURES[c.typeId];
+          const price = priceOf(game, c.typeId, c.level);
+          const poor = game.coins < price;
+          const noQuota = quota <= 0;
           return (
             <button
               key={c.uid}
-              className={`hand-card ${selectedUid === c.uid ? 'active' : ''}`}
+              className={`hand-card lv${c.level} ${selectedUid === c.uid ? 'active' : ''} ${poor || noQuota ? 'poor' : ''}`}
               onClick={() => selectCard(c.uid)}
-              title={def.hint}
+              title={`${LEVEL_NAME[c.level - 1]}${d.name}：${d.tip}`}
             >
               <span className="hand-key">{i + 1}</span>
-              <CardPreview typeId={c.typeId} rot={selectedUid === c.uid ? rot : 0} variant={c.variant} scale={2} />
-              <span className="hand-name">{def.name}</span>
-              <span className="hand-base">{def.base} 分</span>
+              {c.level > 1 && <span className={`lv-badge lv${c.level}`}>Lv{c.level}</span>}
+              <CardPreview typeId={c.typeId} rot={selectedUid === c.uid ? rot : 0} variant={c.variant} level={c.level} scale={2} />
+              <span className="hand-name">{d.short}</span>
+              <span className="hand-price">{price}分</span>
             </button>
           );
         })}
-        {showCheckout && (
-          <button
-            className={`hand-card checkout ${selectedUid === CHECKOUT_UID ? 'active' : ''} ${hasCheckout ? 'extra' : ''}`}
-            onClick={() => selectCard(CHECKOUT_UID)}
-            title={FIXTURES.checkout.hint}
-          >
-            <span className="hand-key">C</span>
-            <CardPreview typeId="checkout" rot={selectedUid === CHECKOUT_UID ? rot : 0} scale={2} />
-            <span className="hand-name">收银台</span>
-            <span className="hand-base">{hasCheckout ? '第二台' : '必放'}</span>
-          </button>
-        )}
+        <button
+          className={`hand-card checkout ${selectedUid === CHECKOUT_UID ? 'active' : ''} ${needCheckout ? 'must' : ''}`}
+          onClick={() => selectCard(CHECKOUT_UID)}
+          title={FIXTURES.checkout.tip}
+        >
+          <span className="hand-key">C</span>
+          <CardPreview typeId="checkout" rot={selectedUid === CHECKOUT_UID ? rot : 0} scale={2} />
+          <span className="hand-name">收银</span>
+          <span className="hand-price">{checkoutCost(game) === 0 ? '免费' : `${checkoutCost(game)}分`}</span>
+        </button>
       </div>
+
       <div className="hand-actions">
         <div className="hand-hint">
-          {selected ? (
+          {needCheckout ? (
             <>
-              <b>{selected.name}</b>
-              <span>{selected.hint}</span>
+              <b>先放一台收银台</b>
+              <span>没有收银台顾客没法结账，第一台免费</span>
+            </>
+          ) : def && card ? (
+            <>
+              <b>
+                {LEVEL_NAME[card.level - 1]}
+                {def.name}
+              </b>
+              <span>{def.tip}</span>
             </>
           ) : (
-            <span>选一张卡，再点店面放置</span>
+            <span>选一张卡，点店面预览，再点 ✓ 放下。点已放的货架可升级或重摆。</span>
           )}
         </div>
         <div className="hand-buttons">
-          <button className="btn" onClick={rotate} title="旋转（R / 右键）">
-            ⟳<span className="btn-label"> 旋转</span>
+          <button className="btn" onClick={rerollHand} disabled={game.rerollsLeft <= 0} title="重新抽一手牌">
+            🔄<span className="btn-label"> 换牌</span> {game.rerollsLeft}
           </button>
           <button
-            className="btn"
-            onClick={discardSelected}
-            disabled={game.discardsLeft <= 0 || !selected || selected.typeId === 'checkout'}
-            title="丢弃当前卡并补一张"
-          >
-            🗑<span className="btn-label"> 丢弃</span> ×{game.discardsLeft}
-          </button>
-          <button
-            className={`btn primary ${stuck ? 'pulse' : ''}`}
+            className={`btn primary ${stuck || quota <= 0 ? 'pulse' : ''}`}
             onClick={openStore}
-            disabled={!canFinish(game)}
-            title={hasCheckout ? '结算并观看开业演出' : stuck ? '手牌已无处可放；没放收银台开业总分减半' : '先放收银台'}
+            disabled={!openable}
+            title={openable ? '结算今天的营业额' : '先放一台收银台'}
           >
-            🏪 开业{stuck && !hasCheckout ? '（−50%）' : ''}
+            🏪 开门营业
           </button>
         </div>
       </div>

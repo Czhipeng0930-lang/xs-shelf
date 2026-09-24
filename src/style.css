@@ -9,6 +9,7 @@
   --accent-dark: #f77622;
   --danger: #e43b44;
   --ok: #63c74d;
+  --cyan: #2ce8f5;
   --border: #181425;
   --radius: 6px;
   --shadow: 0 4px 0 var(--bg-deep);
@@ -25,7 +26,6 @@ body,
   margin: 0;
 }
 
-/* 移动端浏览器地址栏伸缩：用动态视口高度 */
 @supports (height: 100dvh) {
   #root {
     height: 100dvh;
@@ -87,6 +87,11 @@ canvas {
   color: var(--bg-deep);
 }
 
+.btn.danger {
+  background: var(--danger);
+  color: #fff;
+}
+
 .btn.ghost {
   background: var(--panel);
   padding: 7px 10px;
@@ -119,7 +124,7 @@ canvas {
     filter: brightness(1);
   }
   50% {
-    filter: brightness(1.3);
+    filter: brightness(1.35);
   }
 }
 
@@ -130,6 +135,21 @@ canvas {
   padding: 4px 11px;
   font-size: 12.5px;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+.pill.coins {
+  background: #4a3a1e;
+  color: var(--accent);
+}
+
+.pill.quota {
+  background: #2f3f5c;
+}
+
+.pill.queue.bad {
+  background: #5c2b2b;
+  color: #ffb3b3;
 }
 
 .muted {
@@ -145,57 +165,7 @@ canvas {
   flex: 1;
 }
 
-/* ---------- 菜单 ---------- */
-.menu {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-
-.menu-card {
-  background: var(--panel);
-  border: 3px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 0 var(--bg-deep);
-  padding: 28px 26px;
-  width: min(420px, 94vw);
-  text-align: center;
-}
-
-.menu-logo {
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.menu h1 {
-  margin: 8px 0 4px;
-  font-size: 34px;
-  letter-spacing: 6px;
-  text-shadow: 3px 3px 0 var(--bg-deep);
-}
-
-.tagline {
-  color: var(--muted);
-  margin: 0 0 18px;
-  font-size: 14px;
-}
-
-/* ---------- 顶栏 ---------- */
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--panel);
-  border-bottom: 3px solid var(--border);
-  flex-wrap: wrap;
-}
-
+/* ---------- 品牌 ---------- */
 .brand {
   display: inline-flex;
   align-items: center;
@@ -206,7 +176,6 @@ canvas {
   text-shadow: 2px 2px 0 var(--bg-deep);
 }
 
-/* ---------- 品牌 ---------- */
 .brand-logo {
   display: inline-flex;
   align-items: center;
@@ -252,6 +221,26 @@ canvas {
   font-size: 26px;
 }
 
+/* ---------- 菜单 ---------- */
+.menu {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.menu-card {
+  background: var(--panel);
+  border: 3px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 0 var(--bg-deep);
+  padding: 24px 24px 18px;
+  width: min(420px, 94vw);
+  text-align: center;
+}
+
 .menu-brand {
   display: flex;
   align-items: center;
@@ -267,55 +256,67 @@ canvas {
   padding-bottom: 2px;
 }
 
-.result-footer {
+.menu-logo {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.menu h1 {
+  margin: 8px 0 4px;
+  font-size: 34px;
+  letter-spacing: 6px;
+  text-shadow: 3px 3px 0 var(--bg-deep);
+}
+
+.tagline {
+  color: var(--muted);
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+
+.music-toggle {
+  width: auto;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+/* ---------- 顶栏 ---------- */
+.topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 2px solid var(--bg-deep);
+  gap: 8px;
+  padding: 8px 12px;
+  padding-top: max(8px, env(safe-area-inset-top));
+  background: var(--panel);
+  border-bottom: 3px solid var(--border);
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.share-fallback {
-  width: 100%;
-  margin: 6px 0;
-  background: var(--bg-deep);
-  color: var(--ink);
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  padding: 8px;
-  font-size: 12px;
-  font-family: inherit;
-  resize: none;
-}
-
-.pill.mode {
-  background: var(--bg);
-}
-
-.score-block {
+.tier-block {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-width: 120px;
+  min-width: 132px;
 }
 
-.score-value {
-  font-size: 17px;
-  font-weight: 900;
-  color: var(--accent);
-  text-shadow: 2px 2px 0 var(--bg-deep);
+.tier-name {
+  font-size: 12.5px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
-.unlock-bar {
+.tier-bar {
   height: 6px;
   background: var(--bg-deep);
   border-radius: 3px;
   overflow: hidden;
 }
 
-.unlock-fill {
+.tier-fill {
   height: 100%;
   background: var(--ok);
   transition: width 0.3s ease;
@@ -324,6 +325,7 @@ canvas {
 .promo-chips {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
 }
 
 .promo-chip {
@@ -361,43 +363,6 @@ canvas {
   padding: 4px;
 }
 
-.touch-bar {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  right: 8px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg-deep);
-  border: 2px solid var(--accent);
-  border-radius: 8px;
-  padding: 6px 8px;
-  z-index: 5;
-}
-
-.touch-bar .btn {
-  padding: 8px 12px;
-  font-size: 15px;
-  min-width: 42px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.touch-reason {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.touch-reason.bad {
-  color: #f6757a;
-}
-
 .board-inner {
   position: relative;
   box-shadow: 0 10px 0 var(--bg-deep), 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -408,6 +373,48 @@ canvas {
   touch-action: none;
   user-select: none;
   cursor: crosshair;
+}
+
+.action-bar {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: var(--bg-deep);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 6px 8px;
+  z-index: 5;
+}
+
+.action-bar .btn {
+  padding: 8px 10px;
+  font-size: 14px;
+  min-width: 40px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.action-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-label b {
+  color: var(--accent);
+}
+
+.action-label.bad {
+  color: #f6757a;
 }
 
 .score-pop {
@@ -443,20 +450,6 @@ canvas {
   }
 }
 
-.ghost-reason {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  background: var(--danger);
-  color: #fff;
-  border: 2px solid var(--border);
-  border-radius: 4px;
-  padding: 3px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 .skip-btn {
   position: absolute;
   right: 16px;
@@ -468,6 +461,7 @@ canvas {
   background: var(--panel);
   border-top: 3px solid var(--border);
   padding: 8px 12px;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
   display: flex;
   gap: 14px;
   align-items: flex-start;
@@ -482,8 +476,8 @@ canvas {
 
 .hand-card {
   position: relative;
-  width: 96px;
-  height: 118px;
+  width: 88px;
+  height: 116px;
   border: 3px solid var(--border);
   border-radius: 8px;
   background: var(--panel-light);
@@ -493,7 +487,7 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 3px;
+  gap: 2px;
   padding: 8px 6px 6px;
   box-shadow: var(--shadow);
   font-family: inherit;
@@ -511,28 +505,65 @@ canvas {
   box-shadow: 0 10px 0 var(--bg-deep);
 }
 
+.hand-card.lv2 {
+  background: linear-gradient(180deg, #6a6038 0%, #5a6988 60%);
+}
+
+.hand-card.lv3 {
+  background: linear-gradient(180deg, #275e6e 0%, #4a5a8a 60%);
+  border-color: var(--cyan);
+}
+
+.hand-card.lv3.active {
+  border-color: var(--accent);
+}
+
+.hand-card.poor {
+  opacity: 0.5;
+}
+
 .hand-card.checkout {
   background: #4d3e9a;
 }
 
-.hand-card.checkout.extra {
-  opacity: 0.8;
+.hand-card.checkout.must {
+  border-color: var(--accent);
+  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .hand-card .card-preview {
-  max-width: 80px;
-  max-height: 60px;
+  max-width: 74px;
+  max-height: 54px;
   width: auto;
   height: auto;
 }
 
 .hand-key {
   position: absolute;
-  top: 4px;
+  top: 3px;
   left: 6px;
   font-size: 11px;
   color: var(--muted);
   font-weight: 800;
+}
+
+.lv-badge {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0 3px;
+  border-radius: 3px;
+  color: var(--bg-deep);
+}
+
+.lv-badge.lv2 {
+  background: var(--accent);
+}
+
+.lv-badge.lv3 {
+  background: var(--cyan);
 }
 
 .hand-name {
@@ -540,8 +571,8 @@ canvas {
   font-weight: 800;
 }
 
-.hand-base {
-  font-size: 11px;
+.hand-price {
+  font-size: 11.5px;
   color: var(--accent);
   font-weight: 700;
 }
@@ -553,6 +584,7 @@ canvas {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  align-self: stretch;
 }
 
 .hand-hint {
@@ -577,7 +609,7 @@ canvas {
 /* ---------- 弹窗 ---------- */
 .toast {
   position: fixed;
-  top: 60px;
+  top: 62px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-deep);
@@ -588,12 +620,14 @@ canvas {
   font-size: 13px;
   font-weight: 700;
   z-index: 80;
+  max-width: 90vw;
+  text-align: center;
 }
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(24, 20, 37, 0.7);
+  background: rgba(24, 20, 37, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -606,7 +640,7 @@ canvas {
   border: 3px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 8px 0 var(--bg-deep);
-  padding: 22px;
+  padding: 20px;
   width: min(560px, 94vw);
   max-height: 90vh;
   overflow-y: auto;
@@ -639,7 +673,7 @@ canvas {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin: 8px 0;
+  margin: 10px 0;
   font-size: 13.5px;
 }
 
@@ -653,6 +687,36 @@ canvas {
 
 .help-steps .card-preview {
   flex-shrink: 0;
+}
+
+/* ---------- 日结算 ---------- */
+.revenue-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-deep);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.revenue-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.revenue-value {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
+}
+
+.revenue-sub {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .stat-grid {
@@ -682,7 +746,7 @@ canvas {
 }
 
 .stat-value {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 900;
 }
 
@@ -714,26 +778,77 @@ canvas {
   background: var(--bg);
 }
 
-.emoji-grid {
-  font-size: 11px;
-  line-height: 1.15;
-  letter-spacing: -1px;
-  background: var(--bg-deep);
-  border-radius: 6px;
-  padding: 8px;
-  margin: 8px 0;
-  overflow-x: auto;
-  text-align: center;
+.tips {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
 }
 
-.result-actions {
+.tips li {
+  background: var(--bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.next-goal {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.next-goal b {
+  color: var(--accent);
+}
+
+.report-actions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
-.promo-modal .unlock-row {
+.report-actions .btn {
+  flex: 1;
+}
+
+.share-fallback {
+  width: 100%;
+  margin: 6px 0;
+  background: var(--bg-deep);
+  color: var(--ink);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: none;
+}
+
+/* ---------- 升级 / 功能牌 ---------- */
+.upgrade-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.fact {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.fact b {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.unlock-row {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -784,25 +899,28 @@ canvas {
 /* ---------- 响应式：竖屏手机 ---------- */
 @media (max-width: 720px) {
   .topbar {
-    gap: 6px;
+    gap: 5px;
     padding: 6px 8px;
     padding-top: max(6px, env(safe-area-inset-top));
   }
 
   .brand {
-    display: none;
+    gap: 0;
   }
 
-  .score-block {
-    min-width: 90px;
+  .tier-block {
+    min-width: 96px;
   }
 
-  .pill.mode {
+  .tier-name {
+    font-size: 11.5px;
+  }
+
+  .pill {
     font-size: 11.5px;
     padding: 3px 8px;
   }
 
-  /* 手牌栏：单行卡片横向滑动 + 一行操作，总高约 150px */
   .handbar {
     flex-direction: column;
     gap: 6px;
@@ -825,7 +943,7 @@ canvas {
   .hand-card {
     flex-shrink: 0;
     width: 74px;
-    height: 96px;
+    height: 100px;
     padding: 6px 4px 5px;
   }
 
@@ -837,14 +955,6 @@ canvas {
   .hand-card .card-preview {
     max-width: 62px;
     max-height: 44px;
-  }
-
-  .hand-name {
-    font-size: 13px;
-  }
-
-  .hand-base {
-    font-size: 12px;
   }
 
   .hand-actions {
@@ -861,10 +971,6 @@ canvas {
     font-size: 12px;
   }
 
-  .hand-hint b {
-    font-size: 13px;
-  }
-
   .hand-hint span {
     white-space: nowrap;
     overflow: hidden;
@@ -877,15 +983,11 @@ canvas {
   }
 
   .hand-buttons .btn {
-    padding: 8px 10px;
+    padding: 9px 10px;
     font-size: 14px;
   }
 
   .btn-label {
-    display: none;
-  }
-
-  .ghost-reason {
     display: none;
   }
 
@@ -896,6 +998,10 @@ canvas {
 
   .modal {
     padding: 16px;
+  }
+
+  .revenue-value {
+    font-size: 28px;
   }
 
   .menu h1 {
@@ -912,14 +1018,10 @@ canvas {
 @media (orientation: landscape) and (max-height: 520px) {
   .topbar {
     padding: 4px 8px;
-    gap: 6px;
+    gap: 5px;
   }
 
-  .brand {
-    display: none;
-  }
-
-  .unlock-bar {
+  .tier-bar {
     display: none;
   }
 
@@ -929,7 +1031,7 @@ canvas {
 
   .handbar {
     flex-direction: column;
-    width: 172px;
+    width: 168px;
     border-top: none;
     border-left: 3px solid var(--border);
     padding: 6px;
@@ -947,7 +1049,7 @@ canvas {
 
   .hand-card {
     width: 72px;
-    height: 82px;
+    height: 84px;
     padding: 5px 4px 4px;
     gap: 1px;
   }
@@ -962,7 +1064,7 @@ canvas {
     max-height: 38px;
   }
 
-  .hand-base {
+  .hand-price {
     display: none;
   }
 
@@ -994,14 +1096,6 @@ canvas {
     white-space: nowrap;
   }
 
-  .btn-label {
-    display: none;
-  }
-
-  .ghost-reason {
-    display: none;
-  }
-
   .modal {
     padding: 14px;
     max-height: 94vh;
@@ -1012,11 +1106,15 @@ canvas {
     margin-bottom: 8px;
   }
 
-  .stat-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .revenue-hero {
+    padding: 8px;
   }
 
-  .emoji-grid {
-    display: none;
+  .revenue-value {
+    font-size: 24px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }

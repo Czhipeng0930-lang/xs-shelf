@@ -8,5 +8,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // 长线经营用例要跑十几天的模拟
+    testTimeout: 30000,
   },
 });

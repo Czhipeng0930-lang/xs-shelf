@@ -1,136 +1,306 @@
 import { describe, expect, it } from 'vitest';
-import { discard, finish, handStuck, newGame, pickPromo, place, placeContext, replay, type GameState } from './engine';
-import { anyLegalSpot, canPlace } from './grid';
+import {
+  canOpen,
+  checkoutCount,
+  moveFixture,
+  newGame,
+  openStore,
+  pickPromo,
+  place,
+  placeContext,
+  priceOf,
+  quotaLeft,
+  removeFixture,
+  reroll,
+  replay,
+  SUBSIDY,
+  upgradeFixture,
+  upgradePrice,
+  type GameState,
+} from './engine';
+import { canPlace } from './grid';
+import { STARTING_COINS, tierOf } from './progress';
 import { decodeShare, emojiGrid, encodeShare } from './share';
 import type { Rot } from './types';
 
-/** 贪心：把手牌放到当前得分增量最大的合法位置（fast 模式取第一个合法位置） */
-function autoPlay(s: GameState, maxSteps = 200, fast = false): GameState {
-  let cur = s;
-  for (let step = 0; step < maxSteps && !cur.finished; step++) {
-    if (cur.promoOffer) {
-      const picked = pickPromo(cur, cur.promoOffer[0]);
-      if (!picked) break;
-      cur = picked;
-      continue;
-    }
-    let best: GameState | null = null;
-    const candidates = [...cur.hand.map((c) => c.typeId), 'checkout' as const];
-    const ctx = placeContext(cur);
-    for (const typeId of candidates) {
-      for (const rot of [0, 1, 2, 3] as Rot[]) {
-        for (let y = 0; y < cur.board.rows; y++) {
-          for (let x = 0; x < cur.board.cols; x++) {
-            if (!canPlace(ctx, { typeId, x, y, rot }).ok) continue;
-            const next = place(cur, typeId, x, y, rot);
-            if (next && (!best || next.score.total > best.score.total)) best = next;
-            if (fast && best) break;
-          }
-        }
-      }
-    }
-    const moved = !!best;
-    if (best) cur = best;
-    if (!moved) {
-      const d = cur.hand[0] ? discard(cur, cur.hand[0].typeId) : null;
-      if (d) cur = d;
-      else {
-        const f = finish(cur);
-        if (f) cur = f;
-        break;
+/** 找一个能放下的位置（第一个合法点） */
+function findSpot(s: GameState, typeId: Parameters<typeof place>[1]) {
+  const ctx = placeContext(s);
+  for (const rot of [0, 1] as Rot[]) {
+    for (let y = 0; y < s.board.rows; y++) {
+      for (let x = 0; x < s.board.cols; x++) {
+        if (canPlace(ctx, { typeId, x, y, rot }).ok) return { x, y, rot };
       }
     }
   }
-  return cur;
+  return null;
 }
 
-describe('engine', () => {
-  it('新局手牌 3 张、牌库 33 张，且同种子可复现', () => {
-    const a = newGame('daily', 20260917);
-    const b = newGame('daily', 20260917);
-    expect(a.hand.length).toBe(3);
-    expect(a.deckRemaining).toBe(33);
-    expect(a.hand.map((c) => c.typeId)).toEqual(b.hand.map((c) => c.typeId));
-    expect(a.board).toEqual(b.board);
-  });
+/** 在若干候选落点里挑当日营业额最高的（候选数封顶，避免大店面上跑太久） */
+const MAX_CANDIDATES = 40;
 
-  it('不同模式同种子的店面不同', () => {
-    const a = newGame('daily', 1);
-    const b = newGame('endless', 1);
-    expect(a.hand.map((c) => c.typeId).join() === b.hand.map((c) => c.typeId).join() && JSON.stringify(a.board) === JSON.stringify(b.board)).toBe(false);
-  });
+function bestPlacement(s: GameState, typeId: Parameters<typeof place>[1], level: 1 | 2 | 3): GameState | null {
+  const ctx = placeContext(s);
+  const spots: { x: number; y: number; rot: Rot }[] = [];
+  for (const rot of [0, 1] as Rot[]) {
+    for (let y = 0; y < s.board.rows; y++) {
+      for (let x = 0; x < s.board.cols; x++) {
+        if (canPlace(ctx, { typeId, x, y, rot }).ok) spots.push({ x, y, rot });
+      }
+    }
+  }
+  if (spots.length === 0) return null;
+  const stride = Math.max(1, Math.floor(spots.length / MAX_CANDIDATES));
+  let best: GameState | null = null;
+  for (let i = 0; i < spots.length; i += stride) {
+    const sp = spots[i];
+    const next = place(s, typeId, level, sp.x, sp.y, sp.rot);
+    if (next && (!best || next.preview.total > best.preview.total)) best = next;
+  }
+  return best ?? place(s, typeId, level, spots[0].x, spots[0].y, spots[0].rot);
+}
 
-  it('放置后手牌补齐、分数增长、动作被记录', () => {
-    const s = newGame('daily', 7);
-    const typeId = s.hand[0].typeId;
-    let placed: GameState | null = null;
-    for (let y = 0; y < s.board.rows && !placed; y++) {
-      for (let x = 0; x < s.board.cols && !placed; x++) {
-        for (const rot of [0, 1, 2, 3] as Rot[]) {
-          placed = place(s, typeId, x, y, rot);
-          if (placed) break;
+/** 贪心跑若干天：每天把配额用满再开门 */
+function autoPlay(start: GameState, days: number): GameState {
+  let s = start;
+  for (let d = 0; d < days; d++) {
+    if (s.promoOffer) {
+      const picked = pickPromo(s, s.promoOffer[0]);
+      if (picked) s = picked;
+    }
+    // 第一台收银台必放，之后客流超过承载就补
+    let guard = 0;
+    while (
+      (checkoutCount(s) === 0 || (s.preview.demand > checkoutCount(s) * 45 && s.coins > 200)) &&
+      guard++ < 5
+    ) {
+      const next = bestPlacement(s, 'checkout', 1);
+      if (!next) break;
+      s = next;
+    }
+    guard = 0;
+    while (quotaLeft(s) > 0 && guard++ < 40) {
+      const card = s.hand.find((c) => s.coins >= priceOf(s, c.typeId, c.level));
+      if (!card) break;
+      const next = bestPlacement(s, card.typeId, card.level);
+      if (!next) break;
+      s = next;
+    }
+    // 当天剩的分拿去升级
+    let upgraded = true;
+    while (upgraded) {
+      upgraded = false;
+      for (const p of s.placements) {
+        const next = upgradeFixture(s, p.id);
+        if (next) {
+          s = next;
+          upgraded = true;
+          break;
         }
       }
     }
-    expect(placed).not.toBeNull();
-    expect(placed!.hand.length).toBe(3);
-    expect(placed!.deckRemaining).toBe(32);
-    expect(placed!.actions).toHaveLength(1);
-    expect(placed!.placements).toHaveLength(1);
+    const opened = openStore(s);
+    if (!opened) break;
+    s = opened;
+  }
+  return s;
+}
+
+describe('开局', () => {
+  it('第 1 天：起始分数、手牌 3 张、配额按等级', () => {
+    const s = newGame('endless', 20260924);
+    expect(s.day).toBe(1);
+    expect(s.storeLevel).toBe(1);
+    expect(s.coins).toBe(STARTING_COINS);
+    expect(s.hand).toHaveLength(3);
+    expect(quotaLeft(s)).toBe(tierOf(1).quota);
+    // 1 级店只抽得到 1 级卡
+    expect(s.hand.every((c) => c.level === 1)).toBe(true);
   });
 
-  it('手牌里没有的类型不能放', () => {
-    const s = newGame('daily', 7);
-    const missing = (['wood-display', 'island-freezer', 'warehouse-rack'] as const).find((t) => !s.hand.some((c) => c.typeId === t))!;
-    expect(place(s, missing, 2, 2, 0)).toBeNull();
-  });
-
-  it('没放收银台不能开业', () => {
-    const s = newGame('daily', 7);
-    expect(finish(s)).toBeNull();
-    const withCheckout = place(s, 'checkout', 6, 7, 0)!;
-    expect(withCheckout).not.toBeNull();
-    const done = finish(withCheckout)!;
-    expect(done.finished).toBe(true);
-    // 开业动作也进回放
-    expect(replay('daily', 7, done.actions).finished).toBe(true);
-  });
-
-  it('自动跑完一局：能结束、有分数、回放得到同样结果', () => {
-    const end = autoPlay(newGame('daily', 20260917));
-    expect(end.score.total).toBeGreaterThan(0);
-    expect(end.placements.length).toBeGreaterThan(10);
-    const again = replay('daily', 20260917, end.actions);
-    expect(again.score.total).toBe(end.score.total);
-    expect(again.placements.map((p) => [p.typeId, p.x, p.y, p.rot])).toEqual(end.placements.map((p) => [p.typeId, p.x, p.y, p.rot]));
-  });
-
-  it('无尽模式牌库抽干后扩店', () => {
-    const end = autoPlay(newGame('endless', 3), 120, true);
-    expect(end.expansions).toBeGreaterThanOrEqual(1);
-    expect(end.board.cols).toBeGreaterThan(14);
-    // 要么扩到上限后正常结束，要么还有牌可打
-    expect(end.finished || end.deckRemaining + end.hand.length > 0).toBe(true);
-  });
-
-  it('handStuck 在空板上为假', () => {
-    const s = newGame('daily', 9);
-    expect(handStuck(s)).toBe(false);
-    expect(anyLegalSpot(placeContext(s), s.hand[0].typeId)).toBe(true);
+  it('同种子完全可复现', () => {
+    const a = newGame('daily', 20260924);
+    const b = newGame('daily', 20260924);
+    expect(a.hand.map((c) => `${c.typeId}${c.level}`)).toEqual(b.hand.map((c) => `${c.typeId}${c.level}`));
+    expect(a.board).toEqual(b.board);
   });
 });
 
-describe('share', () => {
-  it('编码 / 解码往返一致，且链接足够短', () => {
-    const end = autoPlay(newGame('daily', 20260917), 200, true);
-    const code = encodeShare({ mode: 'daily', seed: 20260917, actions: end.actions });
-    expect(code.length).toBeLessThan(400);
+describe('放置与分数', () => {
+  it('放货架扣钱、占配额、补手牌', () => {
+    const s = newGame('endless', 5);
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    const price = priceOf(s, card.typeId, card.level);
+    const next = place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)!;
+    expect(next).not.toBeNull();
+    expect(next.coins).toBe(s.coins - price);
+    expect(next.placedToday).toBe(1);
+    expect(next.hand).toHaveLength(3);
+    expect(next.placements).toHaveLength(1);
+  });
+
+  it('第一台收银台免费，第二台要钱', () => {
+    const s = newGame('endless', 5);
+    expect(priceOf(s, 'checkout', 1)).toBe(0);
+    const spot = findSpot(s, 'checkout')!;
+    const next = place(s, 'checkout', 1, spot.x, spot.y, spot.rot)!;
+    expect(next.coins).toBe(s.coins);
+    expect(next.placedToday).toBe(0); // 收银台不占配额
+    expect(priceOf(next, 'checkout', 1)).toBeGreaterThan(0);
+  });
+
+  it('钱不够就放不了', () => {
+    const s = { ...newGame('endless', 5), coins: 0 };
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    expect(place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)).toBeNull();
+  });
+
+  it('配额用完就放不了', () => {
+    let s = newGame('endless', 11);
+    s = { ...s, coins: 99999 };
+    let guard = 0;
+    while (quotaLeft(s) > 0 && guard++ < 20) {
+      const card = s.hand[0];
+      const spot = findSpot(s, card.typeId)!;
+      s = place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)!;
+    }
+    expect(quotaLeft(s)).toBe(0);
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    expect(place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)).toBeNull();
+  });
+});
+
+describe('挪动与拆除', () => {
+  it('挪动免费，不占配额', () => {
+    const s = newGame('endless', 5);
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    const placed = place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)!;
+    const id = placed.placements[0].id;
+    const moved = moveFixture(placed, id, spot.x + 3, spot.y + 2, spot.rot);
+    expect(moved).not.toBeNull();
+    expect(moved!.coins).toBe(placed.coins);
+    expect(moved!.placedToday).toBe(placed.placedToday);
+    expect(moved!.placements[0].x).toBe(spot.x + 3);
+  });
+
+  it('现场升级扣分、等级 +1、不占配额', () => {
+    const s = newGame('endless', 5);
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    const placed = place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)!;
+    const id = placed.placements[0].id;
+    const price = upgradePrice(placed, card.typeId, 1);
+    expect(price).toBeGreaterThan(0);
+    const up = upgradeFixture({ ...placed, coins: placed.coins + price }, id)!;
+    expect(up.placements[0].level).toBe(2);
+    expect(up.placedToday).toBe(placed.placedToday);
+    expect(up.coins).toBe(placed.coins);
+    const price2 = upgradePrice(up, card.typeId, 2);
+    expect(price2).toBeGreaterThan(price);
+    const up2 = upgradeFixture({ ...up, coins: up.coins + price2 }, id)!;
+    expect(up2.placements[0].level).toBe(3);
+    expect(upgradeFixture(up2, id)).toBeNull();
+  });
+
+  it('拆除退 60% 并把配额还回来', () => {
+    const s = newGame('endless', 5);
+    const card = s.hand[0];
+    const spot = findSpot(s, card.typeId)!;
+    const placed = place(s, card.typeId, card.level, spot.x, spot.y, spot.rot)!;
+    const removed = removeFixture(placed, placed.placements[0].id)!;
+    expect(removed.placements).toHaveLength(0);
+    expect(removed.placedToday).toBe(0);
+    expect(removed.coins).toBeGreaterThan(placed.coins);
+    expect(removed.coins).toBeLessThan(s.coins);
+  });
+});
+
+describe('开门营业', () => {
+  it('没收银台不能开业', () => {
+    const s = newGame('endless', 5);
+    expect(canOpen(s).ok).toBe(false);
+    expect(openStore(s)).toBeNull();
+  });
+
+  it('开业后进账、天数 +1、配额和换牌重置', () => {
+    const s = newGame('endless', 5);
+    const spot = findSpot(s, 'checkout')!;
+    const withCheckout = place(s, 'checkout', 1, spot.x, spot.y, spot.rot)!;
+    const card = withCheckout.hand[0];
+    const spot2 = findSpot(withCheckout, card.typeId)!;
+    const built = place(withCheckout, card.typeId, card.level, spot2.x, spot2.y, spot2.rot)!;
+    const opened = openStore(built)!;
+    expect(opened.day).toBe(2);
+    expect(opened.placedToday).toBe(0);
+    expect(opened.rerollsLeft).toBeGreaterThan(0);
+    expect(opened.coins).toBeGreaterThan(built.coins);
+    expect(opened.lastReport?.revenue).toBeGreaterThan(0);
+    expect(opened.totalRevenue).toBe(opened.lastReport!.revenue);
+  });
+
+  it('一分没赚也有街道补贴，不会卡死', () => {
+    const s = newGame('endless', 5);
+    const spot = findSpot(s, 'checkout')!;
+    const opened = openStore(place(s, 'checkout', 1, spot.x, spot.y, spot.rot)!)!;
+    expect(opened.lastReport!.revenue).toBe(SUBSIDY);
+  });
+});
+
+describe('长线经营', () => {
+  it('连跑 14 天：分在涨、店在升级、货架能升到高级', () => {
+    const end = autoPlay(newGame('endless', 20260924), 14);
+    expect(end.day).toBe(15);
+    expect(end.totalRevenue).toBeGreaterThan(2000);
+    expect(end.storeLevel).toBeGreaterThan(1);
+    expect(end.board.cols).toBeGreaterThan(tierOf(1).cols);
+    expect(end.promos.length).toBeGreaterThan(0);
+    expect(end.placements.some((p) => p.level > 1)).toBe(true);
+  });
+
+  it('升级会触发功能牌三选一', () => {
+    let s = autoPlay(newGame('endless', 777), 6);
+    let sawOffer = s.promoOffer !== null;
+    for (let i = 0; i < 8 && !sawOffer; i++) {
+      s = autoPlay(s, 1);
+      sawOffer = s.promoOffer !== null || s.promos.length > 0;
+    }
+    expect(sawOffer).toBe(true);
+  });
+
+  it('回放同一串操作得到同样的店', () => {
+    const end = autoPlay(newGame('daily', 20260924), 8);
+    const again = replay('daily', 20260924, end.actions);
+    expect(again.day).toBe(end.day);
+    expect(again.coins).toBe(end.coins);
+    expect(again.totalRevenue).toBe(end.totalRevenue);
+    expect(again.placements.map((p) => [p.typeId, p.level, p.x, p.y, p.rot])).toEqual(
+      end.placements.map((p) => [p.typeId, p.level, p.x, p.y, p.rot]),
+    );
+  });
+
+  it('换牌每天一次', () => {
+    const s = newGame('endless', 3);
+    const before = s.hand.map((c) => c.uid);
+    const r = reroll(s)!;
+    expect(r.hand.map((c) => c.uid)).not.toEqual(before);
+    expect(r.rerollsLeft).toBe(0);
+    expect(reroll(r)).toBeNull();
+  });
+});
+
+describe('分享链接', () => {
+  it('编解码往返一致', () => {
+    const end = autoPlay(newGame('daily', 20260924), 6);
+    const code = encodeShare({ mode: 'daily', seed: 20260924, actions: end.actions });
     const back = decodeShare(`#${code}`)!;
     expect(back.mode).toBe('daily');
-    expect(back.seed).toBe(20260917);
+    expect(back.seed).toBe(20260924);
     expect(back.actions).toEqual(end.actions);
-    const grid = emojiGrid(end);
-    expect(grid.split('\n')).toHaveLength(end.board.rows);
+    expect(emojiGrid(end).split('\n')).toHaveLength(end.board.rows);
   });
 
   it('坏链接返回 null', () => {

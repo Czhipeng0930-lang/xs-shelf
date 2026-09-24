@@ -1,6 +1,6 @@
-import { UNLOCK_TIERS } from '../game/catalog';
+import { queueInfo, quotaLeft } from '../game/engine';
+import { nextTier, tierOf } from '../game/progress';
 import { PROMOS } from '../game/promo';
-import { dailyNumber } from '../game/rng';
 import { useStore } from '../game/store';
 import { BrandLogo } from './BrandLogo';
 
@@ -11,10 +11,16 @@ interface Props {
 export function TopBar({ onHelp }: Props) {
   const game = useStore((s) => s.game);
   const toMenu = useStore((s) => s.toMenu);
-  const viewingShared = useStore((s) => s.viewingShared);
+  const musicOn = useStore((s) => s.musicOn);
+  const toggleMusic = useStore((s) => s.toggleMusic);
   if (!game) return null;
-  const nextTier = UNLOCK_TIERS.find((t) => t > game.score.total);
-  const progress = nextTier ? Math.min(1, game.score.total / nextTier) : 1;
+
+  const tier = tierOf(game.storeLevel);
+  const next = nextTier(game.storeLevel);
+  const prevNeed = tier.need;
+  const progress = next ? Math.min(1, (game.totalRevenue - prevNeed) / (next.need - prevNeed)) : 1;
+  const queue = queueInfo(game);
+  const tight = queue.expected > queue.capacity;
 
   return (
     <div className="topbar">
@@ -23,21 +29,24 @@ export function TopBar({ onHelp }: Props) {
       </button>
       <span className="brand">
         <BrandLogo size="sm" markOnly />
-        像素货架
       </span>
-      <span className="pill mode">
-        {game.mode === 'daily' ? `每日挑战 #${dailyNumber(game.seed)}` : `无尽 · ${game.board.cols}×${game.board.rows}`}
-        {viewingShared && ' · 回看'}
+      <span className="pill coins" title="分数：放货架和升级要花分，开门赚的钱自动换成分">
+        ⭐ {game.coins.toLocaleString('zh-CN')}
       </span>
-      <div className="score-block">
-        <span className="score-value">⭐ {game.score.total.toLocaleString('zh-CN')}</span>
-        <div className="unlock-bar" title={nextTier ? `${nextTier} 分解锁新货架 / 促销卡` : '已全部解锁'}>
-          <div className="unlock-fill" style={{ width: `${progress * 100}%` }} />
+      <div className="tier-block">
+        <span className="tier-name">
+          第 {game.day} 天 · {tier.name}
+        </span>
+        <div className="tier-bar" title={next ? `累计 ¥${next.need} 升级扩店` : '已是最高等级'}>
+          <div className="tier-fill" style={{ width: `${progress * 100}%` }} />
         </div>
       </div>
       <span className="spacer" />
-      <span className="pill" title="牌库剩余">
-        🂠 {game.deckRemaining}
+      <span className="pill quota" title="今天还能放几个货架">
+        🧱 {quotaLeft(game)}/{tier.quota}
+      </span>
+      <span className={`pill queue ${tight ? 'bad' : ''}`} title="预计客流 / 收银台承载力">
+        🧍 {queue.expected}/{queue.capacity}
       </span>
       <span className="promo-chips">
         {game.promos.map((p) => (
@@ -46,6 +55,9 @@ export function TopBar({ onHelp }: Props) {
           </span>
         ))}
       </span>
+      <button className="btn ghost" onClick={toggleMusic} title={musicOn ? '关闭音乐' : '打开音乐'}>
+        {musicOn ? '🔊' : '🔇'}
+      </button>
       <button className="btn ghost" onClick={onHelp} title="玩法说明">
         ?
       </button>

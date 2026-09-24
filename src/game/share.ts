@@ -1,9 +1,10 @@
 import { deflateSync, inflateSync, strFromU8, strToU8 } from 'fflate';
 import { FIXTURE_IDS } from './catalog';
 import type { GameState } from './engine';
+import { tierOf } from './progress';
 import { PROMO_IDS } from './promo';
 import { dailyNumber } from './rng';
-import type { Action, FixtureTypeId, GameMode } from './types';
+import type { Action, FixtureTypeId, GameMode, Level } from './types';
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
 
@@ -38,31 +39,60 @@ function fromBase64Url(s: string): Uint8Array {
   return new Uint8Array(out);
 }
 
-type Packed = number[];
+type Packed = (number | string)[];
 
 function packAction(a: Action): Packed {
-  if (a.kind === 'place') return [0, FIXTURE_IDS.indexOf(a.typeId), a.x, a.y, a.rot];
-  if (a.kind === 'pick') return [1, PROMO_IDS.indexOf(a.promo)];
-  if (a.kind === 'discard') return [2, FIXTURE_IDS.indexOf(a.typeId)];
-  return [3];
+  switch (a.kind) {
+    case 'place':
+      return [0, FIXTURE_IDS.indexOf(a.typeId), a.level, a.x, a.y, a.rot];
+    case 'move':
+      return [1, a.id, a.x, a.y, a.rot];
+    case 'remove':
+      return [2, a.id];
+    case 'pick':
+      return [3, PROMO_IDS.indexOf(a.promo)];
+    case 'reroll':
+      return [4];
+    case 'open':
+      return [5];
+    case 'upgrade':
+      return [6, a.id];
+  }
+}
+
+function num(v: unknown): number | null {
+  return typeof v === 'number' && Number.isInteger(v) ? v : null;
 }
 
 function unpackAction(p: Packed): Action | null {
-  if (!Array.isArray(p) || p.some((n) => typeof n !== 'number' || !Number.isInteger(n))) return null;
-  if (p[0] === 0 && p.length === 5) {
-    const typeId = FIXTURE_IDS[p[1]];
-    if (!typeId || p[4] < 0 || p[4] > 3) return null;
-    return { kind: 'place', typeId, x: p[2], y: p[3], rot: p[4] as 0 | 1 | 2 | 3 };
+  if (!Array.isArray(p) || p.length === 0) return null;
+  const kind = num(p[0]);
+  if (kind === 0 && p.length === 6) {
+    const typeId = FIXTURE_IDS[num(p[1]) ?? -1] as FixtureTypeId | undefined;
+    const level = num(p[2]);
+    const x = num(p[3]);
+    const y = num(p[4]);
+    const rot = num(p[5]);
+    if (!typeId || level === null || level < 1 || level > 3) return null;
+    if (x === null || y === null || rot === null || rot < 0 || rot > 3) return null;
+    return { kind: 'place', typeId, level: level as Level, x, y, rot: rot as 0 | 1 | 2 | 3 };
   }
-  if (p[0] === 1 && p.length === 2) {
-    const promo = PROMO_IDS[p[1]];
+  if (kind === 1 && p.length === 5) {
+    const id = p[1];
+    const x = num(p[2]);
+    const y = num(p[3]);
+    const rot = num(p[4]);
+    if (typeof id !== 'string' || x === null || y === null || rot === null || rot < 0 || rot > 3) return null;
+    return { kind: 'move', id, x, y, rot: rot as 0 | 1 | 2 | 3 };
+  }
+  if (kind === 2 && p.length === 2 && typeof p[1] === 'string') return { kind: 'remove', id: p[1] };
+  if (kind === 3 && p.length === 2) {
+    const promo = PROMO_IDS[num(p[1]) ?? -1];
     return promo ? { kind: 'pick', promo } : null;
   }
-  if (p[0] === 2 && p.length === 2) {
-    const typeId = FIXTURE_IDS[p[1]];
-    return typeId ? { kind: 'discard', typeId } : null;
-  }
-  if (p[0] === 3 && p.length === 1) return { kind: 'finish' };
+  if (kind === 4 && p.length === 1) return { kind: 'reroll' };
+  if (kind === 5 && p.length === 1) return { kind: 'open' };
+  if (kind === 6 && p.length === 2 && typeof p[1] === 'string') return { kind: 'upgrade', id: p[1] };
   return null;
 }
 
@@ -89,7 +119,7 @@ export function decodeShare(hash: string): SharePayload | null {
     const actions: Action[] = [];
     if (m[3].length > 0) {
       const raw: unknown = JSON.parse(strFromU8(inflateSync(fromBase64Url(m[3]))));
-      if (!Array.isArray(raw) || raw.length > 400) return null;
+      if (!Array.isArray(raw) || raw.length > 4000) return null;
       for (const item of raw) {
         const a = unpackAction(item as Packed);
         if (!a) return null;
@@ -131,9 +161,10 @@ export function emojiGrid(s: GameState): string {
 }
 
 export function shareTitle(s: GameState): string {
-  const score = s.score.total.toLocaleString('zh-CN');
-  if (s.mode === 'daily') return `像素货架 每日挑战 #${dailyNumber(s.seed)}  ⭐ ${score}`;
-  return `像素货架 无尽模式  ⭐ ${score}  ${s.board.cols}×${s.board.rows} 店面`;
+  const money = s.totalRevenue.toLocaleString('zh-CN');
+  const tier = tierOf(s.storeLevel).name;
+  if (s.mode === 'daily') return `像素货架 每日挑战 #${dailyNumber(s.seed)}  第 ${s.day} 天 · ${tier} · 累计 ¥${money}`;
+  return `像素货架 经营模式  第 ${s.day} 天 · ${tier} · 累计 ¥${money}`;
 }
 
 export const SHARE_FOOTER = '润达货架 RUNDA SHELF 出品';

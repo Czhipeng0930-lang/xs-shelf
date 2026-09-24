@@ -29,7 +29,7 @@ function bfs(board: Board, empty: Uint8Array, starts: number[]): Int32Array {
   return dist;
 }
 
-/** 可达性 + 主动线（门 → 最远空地的所有最短路径格子） */
+/** 可达性 + 主动线 + 人流热度 */
 export function computeFlow(board: Board, occ: Int32Array): FlowInfo {
   const n = board.cols * board.rows;
   const empty = new Uint8Array(n);
@@ -56,7 +56,17 @@ export function computeFlow(board: Board, occ: Int32Array): FlowInfo {
       if (dist[i] >= 0 && back[i] >= 0 && dist[i] + back[i] === farDist) mainPath[i] = 1;
     }
   }
-  return { empty, dist, mainPath, unreachable };
+
+  // 人流：离门越近越旺，主动线上再加权；走不到的格子为 0
+  const heat = new Float32Array(n);
+  const span = Math.max(1, farDist);
+  for (let i = 0; i < n; i++) {
+    if (!empty[i] || dist[i] < 0) continue;
+    const near = 1 - (dist[i] / span) * 0.55;
+    heat[i] = Math.max(0.35, near) * (mainPath[i] ? 1.3 : 1);
+  }
+
+  return { empty, dist, mainPath, heat, unreachable };
 }
 
 /** 某格 4 邻域是否触及主动线 */

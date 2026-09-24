@@ -1,9 +1,9 @@
 import { DIR_DX, DIR_DY, footprint } from '../game/catalog';
 import type { GameState } from '../game/engine';
 import { hasPower, idx, isBuffer, sideCells } from '../game/grid';
-import type { Board, FixtureTypeId, Placement, Rot } from '../game/types';
+import type { Board, FixtureTypeId, Level, Placement, Rot } from '../game/types';
 import type { Person } from './crowd';
-import { PAL } from './palette';
+import { heatTint, PAL } from './palette';
 import { ELEV, fixtureSprite, personSprite, TILE } from './sprites';
 
 export const WALL_SIDE = 6;
@@ -32,10 +32,13 @@ export function makeView(board: Board, availW: number, availH: number, dpr = 1):
 
 export interface Ghost {
   typeId: FixtureTypeId;
+  level: Level;
   x: number;
   y: number;
   rot: Rot;
   ok: boolean;
+  /** 移动模式下原位置要画成半透明 */
+  movingId?: string;
 }
 
 export interface SceneOpts {
@@ -43,7 +46,7 @@ export interface SceneOpts {
   crowd?: Person[];
   frame?: number;
   showFlow?: boolean;
-  highlight?: Set<string>;
+  selectedId?: string | null;
   doorOpen?: boolean;
 }
 
@@ -64,7 +67,6 @@ function drawFloor(ctx: Ctx, g: GameState, v: View, showFlow: boolean) {
       rect(ctx, px, py + TILE - 1, TILE, 1, PAL.grout);
       rect(ctx, px + TILE - 1, py, 1, TILE, PAL.grout);
       if (isBuffer(b, x, y)) {
-        // 门口地垫
         rect(ctx, px, py, TILE, TILE, '#c9b7a2');
         for (let k = 0; k < TILE; k += 4) rect(ctx, px + k, py, 2, TILE, '#b89f86');
         rect(ctx, px, py + TILE - 1, TILE, 1, '#a08468');
@@ -78,8 +80,10 @@ function drawFloor(ctx: Ctx, g: GameState, v: View, showFlow: boolean) {
       const i = idx(b, x, y);
       const px = v.ox + x * TILE;
       const py = v.oy + y * TILE;
+      // 人流热度：越旺的通道地面越暖
+      const tint = heatTint(g.flow.heat[i]);
+      if (tint) rect(ctx, px, py, TILE, TILE, tint);
       if (g.flow.mainPath[i]) {
-        // 主动线：脚印点，而不是整格铺色
         rect(ctx, px + 5, py + 6, 2, 2, PAL.path);
         rect(ctx, px + 9, py + 9, 2, 2, PAL.path);
       }
@@ -103,19 +107,15 @@ function drawWalls(ctx: Ctx, g: GameState, v: View, doorOpen: boolean) {
   const W = b.cols * TILE;
   const H = b.rows * TILE;
   const totalW = W + WALL_SIDE * 2;
-  // 北墙：顶面 + 立面
   rect(ctx, 0, 0, totalW, WALL_N, PAL.outline);
   rect(ctx, 1, 1, totalW - 2, 5, PAL.wallTop);
   rect(ctx, 1, 6, totalW - 2, WALL_N - 7, PAL.wallFace);
   rect(ctx, 1, WALL_N - 2, totalW - 2, 1, PAL.wallDark);
-  // 墙面装饰条
   rect(ctx, 1, 10, totalW - 2, 1, PAL.light);
-  // 东西墙
   rect(ctx, 0, WALL_N, WALL_SIDE, H, PAL.outline);
   rect(ctx, 1, WALL_N, WALL_SIDE - 2, H, PAL.wallFace);
   rect(ctx, totalW - WALL_SIDE, WALL_N, WALL_SIDE, H, PAL.outline);
   rect(ctx, totalW - WALL_SIDE + 1, WALL_N, WALL_SIDE - 2, H, PAL.wallFace);
-  // 南墙 + 门
   const sy = WALL_N + H;
   rect(ctx, 0, sy, totalW, WALL_S, PAL.outline);
   rect(ctx, 1, sy, totalW - 2, WALL_S - 1, PAL.wallDark);
@@ -131,7 +131,6 @@ function drawWalls(ctx: Ctx, g: GameState, v: View, doorOpen: boolean) {
     rect(ctx, dx - 2, sy, 2, WALL_S, PAL.doorDark);
     rect(ctx, dx + dw, sy, 2, WALL_S, PAL.doorDark);
   }
-  // 电源插座
   for (let x = 0; x < b.cols; x++) {
     if (hasPower(b, x, 0, 0)) drawSocket(ctx, v.ox + x * TILE + 5, 12, true);
   }
@@ -141,14 +140,19 @@ function drawWalls(ctx: Ctx, g: GameState, v: View, doorOpen: boolean) {
   }
 }
 
-function drawFixture(ctx: Ctx, p: Pick<Placement, 'typeId' | 'x' | 'y' | 'rot' | 'variant'>, v: View, frame: number, alpha = 1) {
-  const spr = fixtureSprite(p.typeId, p.rot, p.variant, v.scale, frame);
+function drawFixture(
+  ctx: Ctx,
+  p: Pick<Placement, 'typeId' | 'x' | 'y' | 'rot' | 'variant' | 'level'>,
+  v: View,
+  frame: number,
+  alpha = 1,
+) {
+  const spr = fixtureSprite(p.typeId, p.rot, p.variant, p.level, v.scale, frame);
   const fp = footprint(p.typeId, p.rot);
   const px = v.ox + p.x * TILE;
   const py = v.oy + p.y * TILE - ELEV[p.typeId];
   ctx.save();
   ctx.globalAlpha = alpha;
-  // sprite 已按 scale 绘制，逆缩放贴图
   ctx.drawImage(spr, 0, 0, spr.width, spr.height, px, py, fp.w * TILE, fp.h * TILE + ELEV[p.typeId]);
   ctx.restore();
 }
@@ -165,8 +169,9 @@ function drawPerson(ctx: Ctx, person: Person, v: View) {
   }
 }
 
+/** 没朝通道的取货面打红叉，提醒玩家这面白摆了 */
 function drawFaceMarkers(ctx: Ctx, g: GameState, v: View) {
-  for (const fs of g.score.fixtures) {
+  for (const fs of g.preview.fixtures) {
     const p = g.placements.find((q) => q.id === fs.id);
     if (!p || fs.base === 0) continue;
     for (const f of fs.faces) {
@@ -181,11 +186,27 @@ function drawFaceMarkers(ctx: Ctx, g: GameState, v: View) {
   }
 }
 
+function outline(ctx: Ctx, v: View, p: Pick<Placement, 'typeId' | 'x' | 'y' | 'rot'>, color: string, dashPhase = 0) {
+  const fp = footprint(p.typeId, p.rot);
+  const x = v.ox + p.x * TILE;
+  const y = v.oy + p.y * TILE - ELEV[p.typeId];
+  const w = fp.w * TILE;
+  const h = fp.h * TILE + ELEV[p.typeId];
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 2]);
+  ctx.lineDashOffset = dashPhase;
+  ctx.strokeRect(x - 0.5, y - 0.5, w + 1, h + 1);
+  ctx.restore();
+}
+
 function drawGhost(ctx: Ctx, ghost: Ghost, v: View, frame: number) {
   const fp = footprint(ghost.typeId, ghost.rot);
   rect(ctx, v.ox + ghost.x * TILE, v.oy + ghost.y * TILE, fp.w * TILE, fp.h * TILE, ghost.ok ? PAL.ghostOk : PAL.ghostBad);
-  const jitter = ghost.ok ? 0 : (frame % 2 === 0 ? 0 : 1);
-  drawFixture(ctx, { ...ghost, variant: 0 }, { ...v, ox: v.ox + jitter }, frame, 0.75);
+  const jitter = ghost.ok ? 0 : frame % 2 === 0 ? 0 : 1;
+  drawFixture(ctx, { ...ghost, variant: 0 }, { ...v, ox: v.ox + jitter }, frame, 0.8);
+  outline(ctx, v, ghost, ghost.ok ? '#63c74d' : '#e43b44', frame % 4);
 }
 
 export function renderScene(ctx: Ctx, g: GameState, v: View, opts: SceneOpts = {}) {
@@ -197,10 +218,11 @@ export function renderScene(ctx: Ctx, g: GameState, v: View, opts: SceneOpts = {
   drawFloor(ctx, g, v, opts.showFlow ?? true);
   drawWalls(ctx, g, v, opts.doorOpen ?? false);
 
+  const movingId = opts.ghost?.movingId;
   type Item = { bottom: number; draw: () => void };
   const items: Item[] = g.placements.map((p) => ({
     bottom: (p.y + footprint(p.typeId, p.rot).h) * TILE,
-    draw: () => drawFixture(ctx, p, v, frame),
+    draw: () => drawFixture(ctx, p, v, frame, p.id === movingId ? 0.3 : 1),
   }));
   for (const person of opts.crowd ?? []) {
     items.push({ bottom: person.y * TILE + 14, draw: () => drawPerson(ctx, person, v) });
@@ -208,14 +230,9 @@ export function renderScene(ctx: Ctx, g: GameState, v: View, opts: SceneOpts = {
   items.sort((a, b) => a.bottom - b.bottom);
   for (const it of items) it.draw();
 
-  if (opts.highlight && opts.highlight.size > 0) {
-    for (const p of g.placements) {
-      if (!opts.highlight.has(p.id)) continue;
-      const fp = footprint(p.typeId, p.rot);
-      ctx.strokeStyle = PAL.power;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(v.ox + p.x * TILE + 0.5, v.oy + p.y * TILE - ELEV[p.typeId] + 0.5, fp.w * TILE - 1, fp.h * TILE + ELEV[p.typeId] - 1);
-    }
+  if (opts.selectedId) {
+    const p = g.placements.find((q) => q.id === opts.selectedId);
+    if (p) outline(ctx, v, p, PAL.select, frame % 4);
   }
   drawFaceMarkers(ctx, g, v);
   if (opts.ghost) drawGhost(ctx, opts.ghost, v, frame);

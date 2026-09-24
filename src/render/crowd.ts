@@ -34,10 +34,10 @@ export class Crowd {
   readonly total: number;
 
   constructor(private g: GameState) {
-    this.rng = createRng((g.seed ^ 0x51ed270b) >>> 0);
+    this.rng = createRng((g.seed ^ (g.day * 2654435761) ^ 0x51ed270b) >>> 0);
     this.doors = doorCells(g.board);
     const targets: Cell[] = [];
-    for (const fs of g.score.fixtures) {
+    for (const fs of g.preview.fixtures) {
       const p = g.placements.find((q) => q.id === fs.id);
       if (!p || fs.base === 0) continue;
       for (const f of fs.faces) {
@@ -52,7 +52,8 @@ export class Crowd {
       for (const dir of worldFaces(p)) for (const s of sideCells(p, dir)) if (this.reachable(s.ox, s.oy)) pay.push({ x: s.ox, y: s.oy });
     }
     this.payCells = pay;
-    this.total = Math.min(18, 6 + Math.floor(g.placements.length / 2));
+    // 进店人数跟当天实际客流挂钩，多了会卡，封顶 22
+    this.total = Math.max(4, Math.min(22, Math.round((g.lastReport?.customers ?? g.preview.customers) / 3)));
   }
 
   private reachable(x: number, y: number) {

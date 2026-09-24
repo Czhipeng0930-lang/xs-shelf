@@ -1,27 +1,36 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { GameState } from './game/engine';
+import { useEffect, useState } from 'react';
+import { useMusic } from './audio/useMusic';
+import type { TrackId } from './audio/tracks';
 import { CHECKOUT_UID, useStore } from './game/store';
 import { Board } from './render/Board';
+import { DayReport } from './ui/DayReport';
 import { HandBar } from './ui/HandBar';
 import { HelpOverlay } from './ui/HelpOverlay';
 import { Menu } from './ui/Menu';
-import { PromoPicker } from './ui/PromoPicker';
-import { ResultPanel } from './ui/ResultPanel';
 import { TopBar } from './ui/TopBar';
+import { UpgradePanel } from './ui/UpgradePanel';
+
+/** 开业演出最长播多久 */
+const CROWD_MS = 7000;
 
 export default function App() {
   const screen = useStore((s) => s.screen);
   const game = useStore((s) => s.game);
   const helpSeen = useStore((s) => s.helpSeen);
+  const musicOn = useStore((s) => s.musicOn);
   const toast = useStore((s) => s.toast);
   const dismissHelp = useStore((s) => s.dismissHelp);
   const loadShared = useStore((s) => s.loadShared);
   const [helpOpen, setHelpOpen] = useState(false);
-  // 计分板：记录"为哪一局打开"，切局自动关闭
-  const [resultFor, setResultFor] = useState<GameState | null>(null);
-  const resultOpen = screen === 'result' && resultFor === game;
-  // 第一次进入游戏自动弹帮助
+  /** 记录哪一天的开业演出已经看完，换天自动重置 */
+  const [crowdDoneFor, setCrowdDoneFor] = useState<number | null>(null);
+  const day = game?.day ?? 0;
+  const crowdDone = crowdDoneFor === day;
+
   const showHelp = helpOpen || (screen === 'play' && !helpSeen);
+  const showingCrowd = screen === 'report' && !crowdDone;
+  const track: TrackId = screen === 'menu' ? 'menu' : showingCrowd ? 'rush' : screen === 'report' ? 'night' : 'build';
+  useMusic(track, musicOn);
 
   // 分享链接直接打开
   useEffect(() => {
@@ -30,24 +39,30 @@ export default function App() {
     }
   }, [loadShared]);
 
-  // 结算：先看开业演出，最多 9 秒后弹计分板
+  // 进入结算先看演出，超时兜底
   useEffect(() => {
-    if (screen !== 'result') return;
-    const t = setTimeout(() => setResultFor(useStore.getState().game), 9000);
+    if (screen !== 'report') return;
+    const t = setTimeout(() => setCrowdDoneFor(day), CROWD_MS);
     return () => clearTimeout(t);
-  }, [screen, game]);
-  const openResult = useCallback(() => setResultFor(useStore.getState().game), []);
+  }, [screen, day]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useStore.getState();
       if (e.key === 'Escape') {
         setHelpOpen(false);
-        if (s.screen === 'result') setResultFor(null);
+        s.cancelDraft();
+        s.selectFixture(null);
         return;
       }
       if (s.screen !== 'play' || !s.game || s.game.promoOffer) return;
-      if (e.key === 'r' || e.key === 'R') s.rotate();
+      if (e.key === 'r' || e.key === 'R') {
+        if (s.selectedFixtureId && !s.draft) s.rotateSelectedFixture();
+        else s.rotate();
+      }
+      if ((e.key === 'u' || e.key === 'U') && s.selectedFixtureId && !s.draft) s.upgradeSelectedFixture();
+      if (e.key === 'Enter' && s.draft) s.confirmDraft();
+      if ((e.key === 'Delete' || e.key === 'Backspace') && s.selectedFixtureId) s.removeSelectedFixture();
       if (e.key === 'c' || e.key === 'C') s.selectCard(CHECKOUT_UID);
       const n = Number(e.key);
       if (n >= 1 && n <= 4 && s.game.hand[n - 1]) s.selectCard(s.game.hand[n - 1].uid);
@@ -65,7 +80,7 @@ export default function App() {
     return (
       <div className="app">
         <Menu onHelp={() => setHelpOpen(true)} />
-        <HelpOverlay open={showHelp} onClose={closeHelp} />
+        <HelpOverlay open={helpOpen} onClose={closeHelp} />
         {toast && <div className="toast">{toast}</div>}
       </div>
     );
@@ -77,17 +92,17 @@ export default function App() {
       {toast && <div className="toast">{toast}</div>}
       <div className="play-layout">
         <div className="main">
-          <Board showCrowd={screen === 'result'} onCrowdDone={openResult} />
-          {screen === 'result' && !resultOpen && (
-            <button className="btn primary skip-btn" onClick={openResult}>
-              查看计分板 →
+          <Board showCrowd={showingCrowd} onCrowdDone={() => setCrowdDoneFor(day)} />
+          {showingCrowd && (
+            <button className="btn primary skip-btn" onClick={() => setCrowdDoneFor(day)}>
+              跳过 · 看账本 →
             </button>
           )}
         </div>
-        <HandBar />
+        {screen === 'play' && <HandBar />}
       </div>
-      <PromoPicker />
-      <ResultPanel open={resultOpen} onClose={() => setResultFor(null)} />
+      <DayReport open={screen === 'report' && crowdDone} />
+      <UpgradePanel />
       <HelpOverlay open={showHelp} onClose={closeHelp} />
     </div>
   );
